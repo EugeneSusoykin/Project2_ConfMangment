@@ -1,0 +1,7 @@
+<Config>
+    <PackageName>tokio</PackageName>
+    <RepoSource>https://github.com/tokio-rs/tokio</RepoSource>
+    <Mode>real</Mode>
+    <AsciiTree>false</AsciiTree>
+    <ExcludeFilter>test</ExcludeFilter>
+</Config>

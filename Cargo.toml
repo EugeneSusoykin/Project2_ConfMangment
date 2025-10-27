@@ -1,0 +1,8 @@
+[package]
+name = "Project2"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+thiserror = "1.0"
+quick-xml = "0.38.3"
