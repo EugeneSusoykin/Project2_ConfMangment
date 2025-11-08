@@ -1,9 +1,12 @@
+// Модуль для чтения и парсинга конфигурационного файла (config.xml)
+
 use quick_xml::escape::unescape;
 use quick_xml::events::Event;
 use quick_xml::Reader;
 use std::fs;
 use thiserror::Error;
 
+/// Структура с параметрами из config.xml
 #[derive(Debug)]
 pub struct AppConfig {
     pub package_name: String,
@@ -13,6 +16,7 @@ pub struct AppConfig {
     pub exclude_filter: String,
 }
 
+/// Перечисление возможных ошибок при работе с config.xml
 #[derive(Debug, Error)]
 pub enum ConfigError {
     #[error("cannot read config file: {0}")]
@@ -28,7 +32,9 @@ pub enum ConfigError {
     InvalidValue { field: &'static str, msg: String },
 }
 
+/// Блок реализации структуры AppConfig
 impl AppConfig {
+    /// Загрузка и парсинг конфигурационного файла по указанному пути
     pub fn load_from_file(path: &str) -> Result<Self, ConfigError> {
         let xml = fs::read_to_string(path)
             .map_err(|e| ConfigError::ReadError(e.to_string()))?;
@@ -37,12 +43,15 @@ impl AppConfig {
     }
 }
 
+/// Парсинг содержимого XML-файла и заполнение структуры AppConfig
 fn parse_xml(xml: &str) -> Result<AppConfig, ConfigError> {
+    // Инициализация XML-парсера
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
 
     let mut buf = Vec::new();
 
+    // Поля конфигурации, которые будут извлекаться из XML
     let mut package_name: Option<String> = None;
     let mut repo_source: Option<String> = None;
     let mut mode: Option<String> = None;
@@ -50,6 +59,7 @@ fn parse_xml(xml: &str) -> Result<AppConfig, ConfigError> {
     let mut exclude_filter: Option<String> = None;
     let mut current_tag: Option<String> = None;
 
+    // Чтение и обработка XML-потока
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(e)) => {
@@ -81,6 +91,7 @@ fn parse_xml(xml: &str) -> Result<AppConfig, ConfigError> {
         buf.clear();
     }
 
+    // Проверка обязательных полей конфигурации
     let package_name = package_name.ok_or(ConfigError::MissingField("PackageName"))?;
     if package_name.trim().is_empty() {
         return Err(ConfigError::MissingField("PackageName"));
@@ -91,6 +102,7 @@ fn parse_xml(xml: &str) -> Result<AppConfig, ConfigError> {
         return Err(ConfigError::MissingField("RepoSource"));
     }
 
+    // Проверка корректности поля Mode
     let mode = mode.ok_or(ConfigError::MissingField("Mode"))?;
     let mode_trim = mode.trim();
     if mode_trim != "real" && mode_trim != "test" {
@@ -100,6 +112,7 @@ fn parse_xml(xml: &str) -> Result<AppConfig, ConfigError> {
         });
     }
 
+    // Преобразование строки AsciiTree в булево значение
     let ascii_tree_raw = ascii_tree.ok_or(ConfigError::MissingField("AsciiTree"))?;
     let ascii_tree_bool = match ascii_tree_raw.trim() {
         "true" | "True" | "TRUE" => true,
@@ -114,6 +127,7 @@ fn parse_xml(xml: &str) -> Result<AppConfig, ConfigError> {
 
     let exclude_filter = exclude_filter.unwrap_or_default();
 
+    // Возврат итоговой структуры с загруженными параметрами
     Ok(AppConfig {
         package_name,
         repo_source,

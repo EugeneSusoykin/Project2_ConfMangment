@@ -1,6 +1,6 @@
 <Config>
-    <PackageName>tokio</PackageName>
-    <RepoSource>https://github.com/tokio-rs/tokio</RepoSource>
+    <PackageName>rand</PackageName>
+    <RepoSource>https://github.com/rust-random/rand</RepoSource>
     <Mode>real</Mode>
     <AsciiTree>false</AsciiTree>
     <ExcludeFilter>test</ExcludeFilter>
