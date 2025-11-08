@@ -8,10 +8,10 @@
 <!--</Config>-->
 
 <!--Тестовый репозиторий-->
-<config>
-    <package_name>A</package_name>
-    <repo_source>./test_repo.txt</repo_source>
-    <mode>test</mode>
-    <ascii_tree>true</ascii_tree>
-    <exclude_filter>Z</exclude_filter>
-</config>
+<Сonfig>
+    <PackageName>A</PackageName>
+    <RepoSource>./test_repo.txt</RepoSource>
+    <Mode>test</Mode>
+    <AsciiTree>true</AsciiTree>
+    <ExcludeFilter>Z</ExcludeFilter>
+</Сonfig>
