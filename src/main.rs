@@ -2,11 +2,16 @@
 
 mod config;
 mod cargo_parser;
+mod graph;
+mod test_repo;
 
 use config::{AppConfig, ConfigError};
 
 use std::env;
 use cargo_parser::get_dependencies;
+use graph::DependencyGraph;
+use test_repo::load_test_repo;
+use std::collections::HashSet;
 use crate::cargo_parser::CargoParseError;
 
 
@@ -33,17 +38,41 @@ fn main() {
     println!("Config was uploaded successfully");
     println!("{:#?}", cfg);
 
-    println!("Getting a package dependencies");
+    // Создание графа зависимостей
+    let mut graph = DependencyGraph::new();
 
-    match get_dependencies(&cfg.repo_source) {
-        Ok(deps) => {
-            println!("\nDirect package dependencies '{}':", cfg.package_name);
-            for dep in deps {
-                println!("- {}", dep);
+    // Режим тестирования (Тестовый репозиторий)
+    if cfg.mode == "test" {
+        println!("\nRunning in TEST mode (test_repo.txt)");
+        match load_test_repo(&cfg.repo_source) {
+            Ok(repo_data) => {
+                for (pkg, deps) in repo_data {
+                    graph.add_package(&pkg, deps);
+                }
+            }
+            Err(e) => { print_test_repo_error(e); return; }
+        }
+    } else {
+        // Режим нормального анализа (Настоящий репозиторий)
+        println!("\nRunning in NORMAL mode (real dependency parsing)");
+        match get_dependencies(&cfg.repo_source) {
+            Ok(deps) => {
+                graph.add_package(&cfg.package_name, deps);
+            }
+            Err(e) => {
+                print_cargo_error(e);
+                return;
             }
         }
-        Err(e) => print_cargo_error(e)
     }
+
+    println!("\nDependency graph traversal (DFS):\n");
+
+    let mut visited = HashSet::new();
+    let mut path = Vec::new();
+
+    graph.dfs(&cfg.package_name, &cfg.exclude_filter, &mut visited, &mut path);
+
 }
 
 /// Обработчик ошибок конфигурационного файла (config.xml)
@@ -75,6 +104,18 @@ fn print_cargo_error(err: CargoParseError) {
         }
         CargoParseError::ParseError => {
             eprintln!("CARGO ERROR: invalid Cargo.toml format");
+        }
+    }
+}
+
+/// Обработчик ошибок при работе с тестовым репозиторием
+fn print_test_repo_error(err: test_repo::TestRepoError) {
+    match err {
+        test_repo::TestRepoError::ReadError(msg) => {
+            eprintln!("TEST REPO ERROR: {}", msg);
+        }
+        test_repo::TestRepoError::ParseError(msg) => {
+            eprintln!("TEST REPO ERROR: invalid file format: {}", msg);
         }
     }
 }

@@ -1,7 +1,17 @@
-<Config>
-    <PackageName>rand</PackageName>
-    <RepoSource>https://github.com/rust-random/rand</RepoSource>
-    <Mode>real</Mode>
-    <AsciiTree>false</AsciiTree>
-    <ExcludeFilter>test</ExcludeFilter>
-</Config>
+<!--Настоящий репозиторий-->
+<!--<Config>-->
+<!--    <PackageName>rand</PackageName>-->
+<!--    <RepoSource>https://github.com/rust-random/rand</RepoSource>-->
+<!--    <Mode>real</Mode>-->
+<!--    <AsciiTree>false</AsciiTree>-->
+<!--    <ExcludeFilter>test</ExcludeFilter>-->
+<!--</Config>-->
+
+<!--Тестовый репозиторий-->
+<config>
+    <package_name>A</package_name>
+    <repo_source>./test_repo.txt</repo_source>
+    <mode>test</mode>
+    <ascii_tree>true</ascii_tree>
+    <exclude_filter>Z</exclude_filter>
+</config>
