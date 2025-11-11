@@ -1,12 +1,17 @@
 // Главный модуль для анализа зависимостей Rust-пакета
 // Запуск:
-//   cargo run -- <config.xml - обычный вывод дерева зависимостей
-//   cargo run -- <config.xml> --reverse - вывод дерева обратных зависимостей
+//    cargo run -- ./config.example.xml - обычный вывод дерева зависимостей
+//    cargo run -- ./config.example.xml --reverse - вывод дерева обратных зависимостей
+//    cargo run -- ./config.example.xml --d2 deps.d2 --render deps.png --open - обычный вывод
+// дерева зависимостей и d2 диаграммы
+//    cargo run -- <config.xml> --reverse --d2 deps.d2 --render deps.png --open - вывод дерева
+// обратных зависимостей и d2 диаграммы
 
 mod config;
 mod cargo_parser;
 mod graph;
 mod test_repo;
+mod d2;
 
 use std::env;
 
@@ -14,15 +19,50 @@ use config::{AppConfig, ConfigError};
 use cargo_parser::get_dependencies;
 use graph::DependencyGraph;
 use test_repo::load_test_repo;
+use std::fs;
+use which::which;
 use crate::cargo_parser::CargoParseError;
 
 
 /// Точка входа в приложение: загружает конфигурацию и извлекает зависимости пакета
 fn main() {
     // Чтение аргументов командной строки
-    let mut args = env::args().skip(1);
-    let config_path = args.next().unwrap_or_else(|| "config.example.xml".to_string());
-    let reverse = args.next().map(|s| s == "--reverse").unwrap_or(false);
+    let args: Vec<String> = env::args().collect();
+    let mut d2_path: Option<String> = None;
+    let mut render_path: Option<String> = None;
+    let mut open_after_render = false;
+    // Парсер флагов
+    let mut i = 1;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--d2" => {
+                if i + 1 < args.len() {
+                    d2_path = Some(args[i + 1].clone());
+                    i += 1;
+                } else {
+                    eprintln!("ERROR: --d2 requires a file path");
+                    return;
+                }
+            }
+            "--render" => {
+                if i + 1 < args.len() {
+                    render_path = Some(args[i + 1].clone());
+                    i += 1;
+                } else {
+                    eprintln!("ERROR: --render requires a file path (e.g. output.svg)");
+                    return;
+                }
+            }
+            "--open" => {
+                open_after_render = true;
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+
+    let config_path = args.get(1).cloned().unwrap_or_else(|| "config.example.xml".to_string());
+    let reverse = args.iter().any(|s| s == "--reverse");
 
     // Загружаем конфиг
     let cfg = match AppConfig::load_from_file(&config_path) {
@@ -87,6 +127,61 @@ fn main() {
             Err(e) => {
                 print_cargo_error(e);
                 return;
+            }
+        }
+    }
+
+    // Экспорт в D2 и рендер изображения
+    if d2_path.is_some() || render_path.is_some() {
+        let d2_text = d2::to_d2(&graph, reverse);
+        if let Some(path) = &d2_path {
+            if let Err(e) = fs::write(path, &d2_text) {
+                eprintln!("D2 ERROR: cannot write {}: {}", path, e);
+                return;
+            } else {
+                println!("D2 saved to {}", path);
+            }
+        } else {
+            let default_path = "graph.d2";
+            if let Err(e) = fs::write(default_path, &d2_text) {
+                eprintln!("D2 ERROR: cannot write {}: {}", default_path, e);
+                return;
+            } else {
+                println!("D2 saved to {}", default_path);
+                d2_path = Some(default_path.to_string());
+            }
+        }
+
+        if let Some(out_img) = &render_path {
+            match which("d2") {
+                Ok(bin) => {
+                    let input = d2_path.as_ref().unwrap();
+                    println!("Rendering with {:?}: {} -> {}", bin, input, out_img);
+                    let status = std::process::Command::new(bin)
+                        .arg(input)
+                        .arg(out_img)
+                        .status();
+
+                    match status {
+                        Ok(s) if s.success() => {
+                            println!("Rendered image: {}", out_img);
+                            if open_after_render {
+                                if let Err(e) = open::that(out_img) {
+                                    eprintln!("OPEN WARN: cannot open {}: {}", out_img, e);
+                                }
+                            }
+                        }
+                        Ok(s) => {
+                            eprintln!("D2 RENDER ERROR: exit code {:?}", s.code());
+                        }
+                        Err(e) => {
+                            eprintln!("D2 RENDER ERROR: {}", e);
+                        }
+                    }
+                }
+                Err(_) => {
+                    eprintln!("D2 RENDER SKIPPED: 'd2' CLI not found in PATH.");
+                }
             }
         }
     }

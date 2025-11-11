@@ -3,6 +3,7 @@
 use std::collections::{HashMap, HashSet};
 
 /// Узел графа, представляющий отдельный пакет и его зависимости
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct PackageNode {
     pub name: String,
